@@ -25,9 +25,10 @@ INSTALLED_APPS = [
 
     #my apps
     "account",
-    "rest_framework",
 
     #inst_apps
+    "drf_yasg",
+    "rest_framework",
 
 ]
 
