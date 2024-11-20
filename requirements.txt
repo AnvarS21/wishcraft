@@ -1,4 +1,4 @@
 django==4.2
-psycopg2-binary
-pillow
-
+psycopg2-binary==2.9.10
+pillow==10.4.0
+python-dotenv==1.0.1
