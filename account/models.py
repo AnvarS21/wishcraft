@@ -12,7 +12,7 @@ class User(AbstractUser):
             help_text="Указывает, следует ли считать этого пользователя активным"
                       "Снимите этот флажок вместо удаления учетных записей"
     )
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    avatar = models.ImageField('Аватар',upload_to='avatars/', null=True, blank=True)
 
 
     objects = UserManager()
