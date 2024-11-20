@@ -7,6 +7,7 @@ from django.utils.timezone import now
 from account.managers import UserManager
 from django.conf import settings
 
+
 class User(AbstractUser):
     email = models.EmailField("Почта", unique=True)
     is_active = models.BooleanField(

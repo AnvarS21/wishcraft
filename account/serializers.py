@@ -42,3 +42,42 @@ class OTPTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = OTPToken
         fields = ('token',)
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class ValidateOTPTokenSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    password = serializers.CharField()
+    password2 = serializers.CharField()
+
+    def validate_password1(self, value):
+        validate_password(value)
+        return value
+
+    def validate(self, attrs):
+        password = attrs['password']
+        password2 = attrs.pop('password2')
+        if password != password2:
+            raise serializers.ValidationError({'password2': "Passwords didn't match!"})
+        return attrs
+
+
+    def save(self):
+        token = self.validated_data['token']
+        otp = OTPToken.objects.filter(token=token, purpose='password_reset').first()
+
+        if otp.is_valid():
+            user = otp.user
+            user.set_password(self.validated_data['password'])
+            user.save()
+            otp.delete()
+            return user
+        else:
+            raise serializers.ValidationError({"error": "Invalid or expired token."})
