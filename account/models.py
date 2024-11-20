@@ -1,7 +1,11 @@
+import random
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
+from django.utils.timezone import now
 from account.managers import UserManager
+from core.settings import OTP_TOKEN_EXPIRATION_MINUTES, OTP_TOKEN_MAX_NUMBER, OTP_TOKEN_MIN_NUMBER
 
 
 class User(AbstractUser):
@@ -27,3 +31,25 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class OTPToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otp_tokens', verbose_name='Пользователь')
+    token = models.CharField('Токен', max_length=4)
+    purpose = models.CharField('Назначение', max_length=20)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    expires_at = models.DateTimeField('Дата окончания')
+
+    def is_valid(self):
+        return now() <= self.expires_at
+
+    def generate_token(self):
+        r = random.SystemRandom()
+
+        return str(r.randint(OTP_TOKEN_MIN_NUMBER, OTP_TOKEN_MAX_NUMBER))
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.token = self.generate_token()
+            self.expires_at = now() + timedelta(minutes=OTP_TOKEN_EXPIRATION_MINUTES)
+        super().save(*args, **kwargs)
