@@ -533,3 +533,5 @@ backup_data_fixture.zip
 
 dump.rdb
 *.rdb
+migrations/*
+!migrations/__init__.py
