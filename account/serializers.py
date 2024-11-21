@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.hashers import make_password
-
+from django.db.models import Q
 from account.models import OTPToken
+from friendship.choices import FriendshipStatusChoices
+from friendship.models import Friendship
 
 User = get_user_model()
 
@@ -34,13 +35,22 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
 class UserDetailSerializer(serializers.ModelSerializer):
     wish_count = serializers.SerializerMethodField()
+    friend_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'avatar', 'first_name', 'last_name', 'wish_count')
+        fields = ('id', 'email', 'username', 'avatar', 'first_name', 'last_name', 'wish_count', 'friend_count')
 
     def get_wish_count(self, obj):
         return obj.wishcrafts.count()
+
+
+    def get_friend_count(self, obj):
+
+        return Friendship.objects.filter(
+            (Q(user=obj) | Q(friend=obj)),
+            status=FriendshipStatusChoices.ACCEPTED
+        ).count()
 
 
 class UserSerializer(serializers.ModelSerializer):
