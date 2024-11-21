@@ -48,10 +48,6 @@ class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
-class ValidateOTPTokenSerializer(serializers.Serializer):
-    token = serializers.CharField()
-
-
 class ResetPasswordSerializer(serializers.Serializer):
     token = serializers.CharField()
     password = serializers.CharField()
@@ -73,7 +69,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         token = self.validated_data['token']
         otp = OTPToken.objects.filter(token=token, purpose='password_reset').first()
 
-        if otp.is_valid():
+        if otp and otp.is_valid():
             user = otp.user
             user.set_password(self.validated_data['password'])
             user.save()

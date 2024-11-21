@@ -2,11 +2,10 @@ from django.contrib.auth import get_user_model
 from rest_framework.generics import RetrieveAPIView, CreateAPIView
 from rest_framework.response import Response
 from rest_framework.status import  HTTP_201_CREATED
-from rest_framework.views import  APIView
+from rest_framework.generics import GenericAPIView
 from account.models import OTPToken
 from account.serializers import UserDetailSerializer, UserRegisterSerializer, OTPTokenSerializer, \
-    PasswordResetSerializer, ValidateOTPTokenSerializer, ResetPasswordSerializer
-from core.tasks import send_confirmation_email_task
+    PasswordResetSerializer, ResetPasswordSerializer
 from rest_framework import status
 
 User = get_user_model()
@@ -25,62 +24,64 @@ class UserRegisterView(CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        otp = OTPToken.objects.create(user=user, purpose='registration')
-        send_confirmation_email_task.delay(user.email, otp.token)
+        OTPToken.objects.create(user=user, purpose='registration')
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=HTTP_201_CREATED, headers=headers)
 
-class ActivateAccountView(CreateAPIView):
+
+class ActivateAccountView(GenericAPIView):
     queryset = OTPToken.objects.all()
     serializer_class = OTPTokenSerializer
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.data.get('token')
         otp = OTPToken.objects.filter(token=token, purpose='registration').first()
-        if otp and otp.is_valid():
-            user = otp.user
-            user.is_active = True
-            user.save()
+        if otp:
+            if otp.is_valid():
+                user = otp.user
+                user.is_active = True
+                user.save()
+                otp.delete()
+                return Response({"message": "Account activated."}, status=200)
             otp.delete()
-            return Response({"message": "Account activated."}, status=200)
-        otp.delete()
         return Response({"error": "Invalid or expired token."}, status=400)
 
 
+class ResetPasswordRequestTokenViewSet(GenericAPIView):
+    serializer_class = PasswordResetSerializer
 
-class RequestPasswordResetView(APIView):
-    def post(self, request):
-        serializer = PasswordResetSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            user = User.objects.filter(email=email, is_active=True).first()
-            if user:
-                otp = OTPToken.objects.create(user=user, purpose='password_reset')
-                send_confirmation_email_task.delay(user.email, otp.token)
-                return Response({"message": "Password reset token sent to email."}, status=status.HTTP_200_OK)
-            return Response({"error": "User not found or inactive."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data.get('email')
+        user = User.objects.filter(email=email, is_active=True).first()
+        if user:
+            OTPToken.objects.create(user=user, purpose='password_reset')
+            return Response({"message": "Password reset token sent to email."}, status=status.HTTP_200_OK)
+        return Response({"error": "User not found or inactive."}, status=status.HTTP_404_NOT_FOUND)
 
 
-class ValidateOTPTokenView(APIView):
-    def post(self, request):
-        serializer = ValidateOTPTokenSerializer(data=request.data)
-        if serializer.is_valid():
-            token = serializer.validated_data['token']
-            otp = OTPToken.objects.filter(token=token).first()
+class ResetPasswordValidateTokenViewSet(GenericAPIView):
+    serializer_class = OTPTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data.get('token')
+        otp = OTPToken.objects.filter(token=token).first()
+        if otp:
             if otp.is_valid:
                 return Response({"message": "Token is valid"}, status=status.HTTP_200_OK)
-            return Response({"error": "Invalid or expired token."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Invalid or expired token."}, status=status.HTTP_404_NOT_FOUND)
 
 
-class ResetPasswordView(APIView):
-    def post(self, request):
-        serializer = ResetPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Password reset successful."}, status=200)
+class ResetPasswordConfirmViewSet(GenericAPIView):
+    serializer_class = ResetPasswordSerializer
 
-        return Response(serializer.errors, status=400)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Password reset successful."}, status=200)
