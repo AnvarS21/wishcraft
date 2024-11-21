@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from account.serializers import UserDetailSerializer
+from account.serializers import UserSerializer
 from wish.models import Wish
 
 class WishCreateUpdateSerializer(serializers.ModelSerializer):
@@ -12,7 +12,7 @@ class WishCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class WishDetailSerializer(serializers.ModelSerializer):
-    user = UserDetailSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Wish

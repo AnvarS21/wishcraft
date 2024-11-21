@@ -33,11 +33,21 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
+    wish_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'avatar', 'first_name', 'last_name')
+        fields = ('id', 'email', 'username', 'avatar', 'first_name', 'last_name', 'wish_count')
 
+    def get_wish_count(self, obj):
+        return obj.wishcrafts.count()
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'image')
 
 class OTPTokenSerializer(serializers.ModelSerializer):
     class Meta:
