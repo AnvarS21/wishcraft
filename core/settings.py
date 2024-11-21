@@ -26,6 +26,7 @@ INSTALLED_APPS = [
 
     #my apps
     "account",
+    "wish",
 
     #inst_apps
     "drf_yasg",
