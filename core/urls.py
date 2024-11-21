@@ -23,6 +23,7 @@ from core.swagger import urlpatterns as swagger_yasg
 
 api_patterns = [
     path('accounts/', include('account.urls')),
+    path('wishes/', include('wish.urls')),
 ]
 
 urlpatterns = [

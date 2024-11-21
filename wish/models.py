@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class Wish(models.Model):
+    name = models.CharField('Название', max_length=100)
     image = models.ImageField('Изображение', upload_to='wishcrafts/')
     caption = models.CharField('Подпись', max_length=350)
     link = models.URLField('Ссылка на картинку')
