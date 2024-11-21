@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: wishcraft-backend
+    command: >
+      sh -c "gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers=4"
+    volumes:
+      - .:/usr/src/app/
+      - static_volume:/usr/src/app/static
+      - media_volume:/usr/src/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - db_migration
+    networks:
+      - wishcraft-net
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:14
+    container_name: wishcraft-psql
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - wishcraft-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db_migration:
+    build: .
+    container_name: wishcraft-migration
+    command: >
+      sh -c "python3 manage.py migrate --no-input"
+    volumes:
+      - .:/usr/src/app/
+    depends_on:
+      - postgres
+    networks:
+      - wishcraft-net
+
+  redis:
+    image: redis:7
+    restart: always
+    container_name: wishcraft-redis
+    networks:
+      - wishcraft-net
+
+  celery:
+    build: .
+    container_name: wishcraft-celery
+    command: celery -A core worker -l INFO
+    volumes:
+      - .:/usr/src/app/
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - wishcraft-net
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    container_name: wishcraft-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - static_volume:/usr/src/app/static
+      - media_volume:/usr/src/app/media
+    depends_on:
+      - backend
+    networks:
+      - wishcraft-net
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  wishcraft-net:
+
